@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# さくっと作文（sakutto-sakubun）
 
-## Getting Started
+AIが質問形式で情報を引き出し、作文作成を支援する Web アプリの MVP です。
 
-First, run the development server:
+- **作文完成モード**: 集めた情報から指定文字数前後で作文を生成
+- **ヒントモード**: 作文を書く手順とコツをステップ形式で表示
+
+## 技術構成
+
+| 項目 | 技術 |
+|------|------|
+| フレームワーク | Next.js 16（App Router） |
+| 言語 | TypeScript |
+| スタイル | Tailwind CSS v4 |
+| AI | Google Gemini API（`@google/generative-ai`） |
+| 状態管理 | React useState（DB なし） |
+| API 呼び出し | Server Actions（サーバー側のみで Gemini を実行） |
+
+## ディレクトリ構成
+
+```
+sakutto-sakubun/
+├── src/
+│   ├── app/
+│   │   ├── actions.ts      # Server Actions（Gemini 呼び出しの窓口）
+│   │   ├── globals.css     # グローバルスタイル・CSS 変数
+│   │   ├── layout.tsx      # ルートレイアウト・メタデータ（noindex）
+│   │   └── page.tsx        # メイン画面（設定・質問・作文/ヒント）
+│   ├── lib/
+│   │   └── gemini.ts       # Gemini API 呼び出し（質問・作文・ヒント生成）
+│   └── types/
+│       └── index.ts        # 型定義（EssayConfig, ChatMessage, AppPhase 等）
+├── public/
+├── .env.example            # 環境変数の例（GEMINI_API_KEY）
+├── .env.local               # 本番用のキーはここに（git に含めない）
+├── next.config.ts
+├── package.json
+├── tailwind.config.ts      # （Tailwind v4 の場合は postcss 等で設定）
+└── README.md
+```
+
+## セットアップ（ステップバイステップ）
+
+### 1. リポジトリのクローンとパッケージインストール
+
+```bash
+git clone <リポジトリURL>
+cd sakutto-sakubun
+npm install
+```
+
+### 2. 環境変数の設定
+
+1. [Google AI Studio](https://aistudio.google.com/apikey) で API キーを取得する  
+2. プロジェクト直下に `.env.local` を作成する  
+3. 次の内容を記述する（`your_gemini_api_key_here` を実際のキーに置き換え）
+
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+参考用の例は `.env.example` にあります。コピーして使っても構いません。
+
+```bash
+# Windows (PowerShell)
+copy .env.example .env.local
+# その後 .env.local を開いて GEMINI_API_KEY を編集
+
+# macOS / Linux
+cp .env.example .env.local
+```
+
+### 3. 開発サーバーの起動
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで [http://localhost:3000](http://localhost:3000) を開きます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. 本番ビルド（任意）
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## 使い方
 
-To learn more about Next.js, take a look at the following resources:
+1. **設定画面**  
+   作文テーマ・文字数・対象レベル・その他ルールを入力し、「作文をはじめる」を押す。
+2. **質問フェーズ**  
+   AI が 1 問ずつ質問するので、回答を入力して送信。十分な情報が集まると「作文を書くか、ヒントを見るか選んでください」と表示される。
+3. **モード選択**  
+   「作文を完成させる」または「ヒントモード」のどちらかを選択。
+4. **結果**  
+   - 作文完成: 指定文字数前後で作文が表示される。  
+   - ヒントモード: 手順とコツがステップ形式で表示される。  
+5. 「最初からやり直す」で設定画面に戻る。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 主なファイルの役割
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| ファイル | 役割 |
+|----------|------|
+| `src/app/page.tsx` | 1 ページ構成の UI。設定フォーム・チャット風質問・モード選択・作文/ヒント表示・ローディング |
+| `src/app/actions.ts` | Server Actions。`getNextQuestion` / `getEssay` / `getHints` でクライアントから呼び出し、サーバー側で Gemini を実行 |
+| `src/lib/gemini.ts` | Gemini API の直接呼び出し。`generateNextQuestion` / `generateEssay` / `generateHints` |
+| `src/types/index.ts` | `EssayConfig`・`ChatMessage`・`AppPhase`・`TargetLevel` などの型定義 |
 
-## Deploy on Vercel
+## セキュリティ
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Gemini API キーは **`.env.local` にのみ** 格納し、リポジトリにコミットしません。
+- API 呼び出しは **Server Actions 経由でサーバー側のみ** 行い、クライアントにキーを露出しません。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## メタデータ・SEO
+
+- タイトル: **さくっと作文**
+- `layout.tsx` の `metadata` で `robots: "noindex, nofollow"` を指定しており、検索エンジンへのインデックスは行いません。
+
+## ライセンス
+
+MIT を想定（リポジトリのライセンスファイルに従ってください）。
