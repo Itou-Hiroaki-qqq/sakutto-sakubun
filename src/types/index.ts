@@ -14,8 +14,12 @@ export type EssayConfig = {
 
 /** 対象レベル（select の選択肢） */
 export type TargetLevel =
-  | "elementary_low"
-  | "elementary_high"
+  | "grade_1"
+  | "grade_2"
+  | "grade_3"
+  | "grade_4"
+  | "grade_5"
+  | "grade_6"
   | "junior_high"
   | "high_school"
   | "general"
@@ -37,10 +41,24 @@ export type ChatMessage = {
  * - mode_select: 作文完成 or ヒントモード選択
  * - essay: 作文完成結果表示
  * - hints: ヒントモード結果表示
+ * - image_review: 手書き作文の画像添削
  */
 export type AppPhase =
   | "config"
   | "questions"
   | "mode_select"
   | "essay"
-  | "hints";
+  | "hints"
+  | "image_review";
+
+/**
+ * 手書き作文画像添削の結果（Gemini Vision の返答をパースした形）
+ */
+export type ImageReviewResult = {
+  extractedText: string;
+  typos: string;
+  wordCountEval: string;
+  ruleEval: string;
+  goodPoints: string;
+  improvements: string;
+};
