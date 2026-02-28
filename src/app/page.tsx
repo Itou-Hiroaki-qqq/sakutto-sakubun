@@ -40,6 +40,8 @@ export default function Home() {
     targetLevel: "grade_4",
     extraRules: "",
   });
+  /** 文字数入力欄の表示用（編集中は空や「4」などを許容） */
+  const [wordCountInput, setWordCountInput] = useState("400");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [essayResult, setEssayResult] = useState("");
@@ -311,14 +313,19 @@ export default function Home() {
       setError("作文テーマを入力してください");
       return;
     }
+    const wc = Number(wordCountInput);
+    const normalizedWc = Number.isFinite(wc) && wc >= 100 && wc <= 2000 ? wc : 400;
+    const configToUse = { ...config, wordCount: normalizedWc };
+    setConfig((c) => ({ ...c, wordCount: normalizedWc }));
+    setWordCountInput(String(normalizedWc));
     setRuleSaveConfirmOpen(false);
     setError(null);
     setLoading(true);
     try {
-      addThemeToHistory(config.theme.trim()).catch(() => {});
+      addThemeToHistory(configToUse.theme.trim()).catch(() => {});
       setPhase("questions");
       setMessages([]);
-      const { text, done } = await getNextQuestion(config, []);
+      const { text, done } = await getNextQuestion(configToUse, []);
       setMessages([{ role: "ai", content: text }]);
       if (done) setPhase("mode_select");
     } catch (e) {
@@ -620,6 +627,7 @@ export default function Home() {
   /** 最初からやり直す */
   const handleReset = () => {
     setPhase("config");
+    setWordCountInput(String(config.wordCount));
     setMessages([]);
     setEssayResult("");
     setHintsResult("");
@@ -739,13 +747,14 @@ export default function Home() {
                   min={100}
                   max={2000}
                   step={100}
-                  value={config.wordCount}
-                  onChange={(e) =>
-                    setConfig((c) => ({
-                      ...c,
-                      wordCount: Number(e.target.value) || 400,
-                    }))
-                  }
+                  value={wordCountInput}
+                  onChange={(e) => setWordCountInput(e.target.value)}
+                  onBlur={() => {
+                    const num = Number(wordCountInput);
+                    const normalized = Number.isFinite(num) && num >= 100 && num <= 2000 ? num : 400;
+                    setConfig((c) => ({ ...c, wordCount: normalized }));
+                    setWordCountInput(String(normalized));
+                  }}
                   className="w-full rounded-sm border border-card-border bg-background px-3 py-2 text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
                 />
               </div>
@@ -949,7 +958,7 @@ export default function Home() {
               </div>
               {phase === "questions" && !loading && (
                 <div className="border-t border-card-border p-4">
-                  <div className="flex gap-2 items-end">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                     <textarea
                       ref={answerTextareaRef}
                       value={currentAnswer}
@@ -966,25 +975,27 @@ export default function Home() {
                         e.key === "Enter" && !e.shiftKey && handleSubmitAnswer()
                       }
                       placeholder="回答を入力..."
-                      className="min-h-10 max-h-[240px] w-full flex-1 resize-none overflow-y-auto rounded-sm border border-card-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                      className="min-h-10 max-h-[240px] w-full flex-1 resize-none overflow-y-auto rounded-sm border border-card-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 sm:min-w-0"
                       aria-label="回答入力"
                     />
-                    <button
-                      type="button"
-                      onClick={() => handleVoiceInput("answer")}
-                      title={voiceInputTarget === "answer" ? "音声入力を終了" : "音声入力"}
-                      className={`rounded-sm border border-card-border px-3 py-2 text-sm transition hover:bg-muted disabled:opacity-50 ${voiceInputTarget === "answer" ? "bg-primary text-primary-foreground" : "bg-card"}`}
-                    >
-                      🎤{voiceInputTarget === "answer" ? "停止" : "音声入力"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSubmitAnswer}
-                      disabled={!currentAnswer.trim()}
-                      className="rounded-sm bg-primary px-4 py-2 font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-                    >
-                      送信
-                    </button>
+                    <div className="flex gap-2 sm:shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleVoiceInput("answer")}
+                        title={voiceInputTarget === "answer" ? "音声入力を終了" : "音声入力"}
+                        className={`rounded-sm border border-card-border px-3 py-2 text-sm transition hover:bg-muted disabled:opacity-50 ${voiceInputTarget === "answer" ? "bg-primary text-primary-foreground" : "bg-card"}`}
+                      >
+                        🎤{voiceInputTarget === "answer" ? "停止" : "音声入力"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSubmitAnswer}
+                        disabled={!currentAnswer.trim()}
+                        className="rounded-sm bg-primary px-4 py-2 font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+                      >
+                        送信
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1081,20 +1092,20 @@ export default function Home() {
                 >
                   以下の内容を入れて作文をもう一度作成する
                 </button>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                   <textarea
                     value={essayExtraContent}
                     onChange={(e) => setEssayExtraContent(e.target.value)}
                     placeholder="盛り込みたい内容を入力（例：もっと具体的なエピソードを入れてほしい）"
                     rows={3}
-                    className="flex-1 rounded-sm border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    className="w-full flex-1 rounded-sm border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 sm:min-w-0"
                     aria-label="作文に盛り込む内容"
                   />
                   <button
                     type="button"
                     onClick={() => handleVoiceInput("essay")}
                     title={voiceInputTarget === "essay" ? "音声入力を終了" : "音声入力"}
-                    className={`shrink-0 self-end rounded-sm border border-card-border px-3 py-2 text-sm transition hover:bg-muted ${voiceInputTarget === "essay" ? "bg-primary text-primary-foreground" : "bg-card"}`}
+                    className={`shrink-0 self-end rounded-sm border border-card-border px-3 py-2 text-sm transition hover:bg-muted sm:self-end ${voiceInputTarget === "essay" ? "bg-primary text-primary-foreground" : "bg-card"}`}
                   >
                     🎤{voiceInputTarget === "essay" ? "停止" : "音声入力"}
                   </button>
@@ -1216,20 +1227,20 @@ export default function Home() {
                 >
                   以下の内容を入れてヒントをもう一度作成する
                 </button>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                   <textarea
                     value={hintsExtraContent}
                     onChange={(e) => setHintsExtraContent(e.target.value)}
                     placeholder="ヒントに反映したい内容を入力（例：段落の区切り方をもっと詳しく）"
                     rows={3}
-                    className="flex-1 rounded-sm border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    className="w-full flex-1 rounded-sm border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 sm:min-w-0"
                     aria-label="ヒントに反映する内容"
                   />
                   <button
                     type="button"
                     onClick={() => handleVoiceInput("hints")}
                     title={voiceInputTarget === "hints" ? "音声入力を終了" : "音声入力"}
-                    className={`shrink-0 self-end rounded-sm border border-card-border px-3 py-2 text-sm transition hover:bg-muted ${voiceInputTarget === "hints" ? "bg-primary text-primary-foreground" : "bg-card"}`}
+                    className={`shrink-0 self-end rounded-sm border border-card-border px-3 py-2 text-sm transition hover:bg-muted sm:self-end ${voiceInputTarget === "hints" ? "bg-primary text-primary-foreground" : "bg-card"}`}
                   >
                     🎤{voiceInputTarget === "hints" ? "停止" : "音声入力"}
                   </button>
