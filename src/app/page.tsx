@@ -12,6 +12,7 @@ import {
   addThemeToHistory,
   getSavedRules,
 } from "./actions";
+import { createClient } from "@/lib/supabase/client";
 import type { EssayConfig, ChatMessage, AppPhase, TargetLevel, ImageReviewResult } from "@/types";
 
 const PENDING_RULE_KEY = "sakubun_pending_rule";
@@ -640,13 +641,27 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
         {/* ヘッダー */}
-        <header className="mb-6 sm:mb-8">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            さくっと作文
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            AIが質問で情報を引き出し、作文をサポートします
-          </p>
+        <header className="mb-6 flex items-start justify-between gap-4 sm:mb-8">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              さくっと作文
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              AIが質問で情報を引き出し、作文をサポートします
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              const supabase = createClient();
+              await supabase.auth.signOut();
+              router.push("/login");
+              router.refresh();
+            }}
+            className="shrink-0 rounded-sm border border-card-border bg-card px-3 py-1.5 text-sm text-foreground transition hover:bg-muted"
+          >
+            ログアウト
+          </button>
         </header>
 
         {/* エラー表示 */}

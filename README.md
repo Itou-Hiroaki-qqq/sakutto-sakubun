@@ -101,6 +101,58 @@ npm run build
 npm start
 ```
 
+### 5. Vercel へのデプロイ
+
+1. **Vercel アカウント**  
+   [Vercel](https://vercel.com) にサインアップ（GitHub / GitLab / Bitbucket 連携がおすすめ）。
+
+2. **リポジトリを Git で管理**  
+   まだの場合、プロジェクトを Git で初期化し、GitHub 等にプッシュする。
+
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin <あなたのリポジトリURL>
+   git push -u origin main
+   ```
+
+3. **Vercel でプロジェクトをインポート**  
+   - [Vercel Dashboard](https://vercel.com/dashboard) で **Add New…** → **Project** を選択。  
+   - 対象の Git リポジトリを選び **Import**。  
+   - Framework Preset は **Next.js** のまま（自動検出）。  
+   - **Deploy** はまだ押さない。
+
+4. **環境変数を設定**  
+   Import 画面の **Environment Variables** で、次の変数を追加する（本番用の値に置き換える）。
+
+   | 名前 | 値 | 備考 |
+   |------|-----|------|
+   | `GEMINI_API_KEY` | （Google AI Studio の API キー） | 必須 |
+   | `NEXT_PUBLIC_SUPABASE_URL` | （Supabase の Project URL） | 認証用 |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | （Supabase の anon key） | 認証用 |
+   | `DATABASE_URL` | （Neon の接続文字列） | テーマ履歴・保存ルール用 |
+
+   - すべて **Production**（必要なら Preview / Development にも同じ値を設定）。  
+   - 保存したら **Deploy** を実行。
+
+5. **デプロイ後**  
+   - ビルドが成功すると、`https://＜プロジェクト名＞.vercel.app` のような URL で公開される。  
+   - 未ログインでアクセスすると `/login` にリダイレクトされる。  
+   - **Supabase の認証設定**: Supabase ダッシュボードの **Authentication** → **URL Configuration** で、**Site URL** に Vercel の URL（例: `https://xxx.vercel.app`）、**Redirect URLs** に `https://xxx.vercel.app/**` を追加する。
+
+6. **今後の更新**  
+   Git の `main`（またはデフォルトブランチ）にプッシュすると、Vercel が自動でビルド・デプロイする。
+
+**Vercel CLI でデプロイする場合**
+
+```bash
+npm i -g vercel
+vercel
+```
+
+初回はログインとプロジェクト設定の質問に答える。環境変数は `vercel env add` で追加するか、ダッシュボードで設定する。
+
 ## 使い方
 
 ### 認証
