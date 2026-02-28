@@ -5,8 +5,51 @@ import {
   generateCheckReadyOrContinue,
   generateEssay,
   generateHints,
+  generateImageReview,
 } from "@/lib/gemini";
-import type { ChatMessage, EssayConfig } from "@/types";
+import { createClient } from "@/lib/supabase/server";
+import {
+  addThemeHistory as dbAddThemeHistory,
+  getThemeHistory as dbGetThemeHistory,
+  getSavedRules as dbGetSavedRules,
+  saveRule as dbSaveRule,
+} from "@/lib/db";
+import type { ChatMessage, EssayConfig, ImageReviewResult, TargetLevel } from "@/types";
+
+async function getUserId(): Promise<string> {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.user?.id) throw new Error("ログインしてください");
+  return session.user.id;
+}
+
+/** テーマ履歴を取得（直近7件） */
+export async function getThemeHistory(): Promise<string[]> {
+  const userId = await getUserId();
+  return dbGetThemeHistory(userId);
+}
+
+/** テーマを履歴に追加 */
+export async function addThemeToHistory(theme: string): Promise<void> {
+  const userId = await getUserId();
+  await dbAddThemeHistory(userId, theme);
+}
+
+/** 保存したルール一覧を取得 */
+export async function getSavedRules(): Promise<
+  { id: number; name: string; content: string }[]
+> {
+  const userId = await getUserId();
+  return dbGetSavedRules(userId);
+}
+
+/** ルールを保存 */
+export async function saveRuleAction(name: string, content: string): Promise<void> {
+  const userId = await getUserId();
+  await dbSaveRule(userId, name, content);
+}
 
 /**
  * 質問フェーズ: 次のAI質問を1つ取得
@@ -56,4 +99,17 @@ export async function getHints(
   extraContent?: string
 ): Promise<string> {
   return generateHints(config, messages, extraContent);
+}
+
+/**
+ * 手書き作文画像の添削（Gemini Vision）
+ * 画像は base64 で渡す（クライアントでファイル読み込み）
+ * targetLevel を渡すと評価文をその年齢向けの表現にする
+ */
+export async function reviewHandwrittenImage(
+  imageBase64: string,
+  mimeType: string,
+  options: { theme?: string; wordCount?: number; rules?: string; targetLevel?: TargetLevel }
+): Promise<ImageReviewResult> {
+  return generateImageReview(imageBase64, mimeType, options);
 }

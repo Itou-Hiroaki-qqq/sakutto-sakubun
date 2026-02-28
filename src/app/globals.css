@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* 基準フォントを少し大きく（UI比率は維持） */
+html {
+  font-size: 112.5%; /* 16px → 18px */
+}
+
 /* 2026トレンド: ソフトなニュートラル・落ち着いた背景 */
 :root {
   --background: #fafaf9;
@@ -55,4 +60,20 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--card-border) transparent;
+}
+
+/* ページ遷移: 右からスライドイン（作文ルール保存など） */
+@keyframes page-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.page-slide-in {
+  animation: page-slide-in 0.35s ease-out forwards;
 }
