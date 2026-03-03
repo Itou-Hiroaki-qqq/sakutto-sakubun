@@ -19,10 +19,11 @@ import type { ChatMessage, EssayConfig, ImageReviewResult, TargetLevel } from "@
 async function getUserId(): Promise<string> {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.user?.id) throw new Error("ログインしてください");
-  return session.user.id;
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user?.id) throw new Error("ログインしてください");
+  return user.id;
 }
 
 /** テーマ履歴を取得（直近7件） */
@@ -59,9 +60,9 @@ export async function getNextQuestion(
   config: EssayConfig,
   messages: ChatMessage[]
 ): Promise<{ text: string; done: boolean }> {
+  await getUserId();
   const text = await generateNextQuestion(config, messages);
-  const done =
-    /これで十分です|作文を書くか|ヒントを見るか/.test(text);
+  const done = /^これで十分です[。.]/.test(text.trimStart());
   return { text, done };
 }
 
@@ -72,8 +73,9 @@ export async function checkReadyOrGetMore(
   config: EssayConfig,
   messages: ChatMessage[]
 ): Promise<{ text: string; done: boolean }> {
+  await getUserId();
   const text = await generateCheckReadyOrContinue(config, messages);
-  const done = /これで十分です|作文を書くか|ヒントを見るか/.test(text);
+  const done = /^これで十分です[。.]/.test(text.trimStart());
   return { text, done };
 }
 
@@ -86,6 +88,7 @@ export async function getEssay(
   messages: ChatMessage[],
   extraContent?: string
 ): Promise<string> {
+  await getUserId();
   return generateEssay(config, messages, extraContent);
 }
 
@@ -98,6 +101,7 @@ export async function getHints(
   messages: ChatMessage[],
   extraContent?: string
 ): Promise<string> {
+  await getUserId();
   return generateHints(config, messages, extraContent);
 }
 
@@ -111,5 +115,6 @@ export async function reviewHandwrittenImage(
   mimeType: string,
   options: { theme?: string; wordCount?: number; rules?: string; targetLevel?: TargetLevel }
 ): Promise<ImageReviewResult> {
+  await getUserId();
   return generateImageReview(imageBase64, mimeType, options);
 }

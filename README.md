@@ -38,7 +38,7 @@ sakutto-sakubun/
 │   │   └── supabase/
 │   │       ├── client.ts     # ブラウザ用 Supabase クライアント
 │   │       └── server.ts     # サーバー用 Supabase クライアント
-│   ├── middleware.ts         # 認証ガード・セッション更新
+│   ├── proxy.ts              # 認証ガード・セッション更新
 │   └── types/
 │       ├── index.ts          # EssayConfig, ChatMessage, AppPhase, TargetLevel 等
 │       └── speech.d.ts       # 音声入力（Web Speech API）型
@@ -158,7 +158,7 @@ vercel
 ### 認証
 
 - **新規登録**（`/signup`）: Name・Email・Password・Confirm Password を入力し「登録する」。登録後はトップへ遷移。
-- **ログイン**（`/login`）: Email・Password を入力し「ログイン」。ログイン情報を記録するチェックあり。未ログインでトップにアクセスするとログイン画面へリダイレクトされます。
+- **ログイン**（`/login`）: Email・Password を入力し「ログイン」。未ログインでトップにアクセスするとログイン画面へリダイレクトされます。
 
 ### 作文の作成フロー
 
@@ -202,7 +202,7 @@ vercel
 | `src/lib/db.ts` | Neon 用。テーマ履歴の追加・取得（直近7件・同一テーマは1回）、保存ルールの取得・保存 |
 | `src/lib/supabase/client.ts` | ブラウザ用 Supabase クライアント（認証） |
 | `src/lib/supabase/server.ts` | サーバー用 Supabase クライアント（Server Actions 等） |
-| `src/middleware.ts` | セッション更新、未ログイン時は `/login` へリダイレクト |
+| `src/proxy.ts` | セッション更新、未ログイン時は `/login` へリダイレクト |
 | `src/types/index.ts` | `EssayConfig`・`TargetLevel`（grade_1〜6 等）・`AppPhase`・`ImageReviewResult` 等 |
 | `supabase/schema.sql` | `theme_history`・`saved_rules` テーブル定義（Neon で実行） |
 

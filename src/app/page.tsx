@@ -19,6 +19,44 @@ const PENDING_RULE_KEY = "sakubun_pending_rule";
 const PENDING_CONFIG_KEY = "sakubun_pending_config";
 const AUTO_START_QUESTIONS_KEY = "sakubun_auto_start_questions";
 
+/** 画像をリサイズ・圧縮して base64 を返す（送信サイズ削減で Server Action 制限を回避） */
+function compressImageToBase64(file: File, maxSize = 1200, quality = 0.85): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const scale = maxSize / Math.max(w, h);
+      const cw = scale >= 1 ? w : Math.round(w * scale);
+      const ch = scale >= 1 ? h : Math.round(h * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = cw;
+      canvas.height = ch;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas に描画できません"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, cw, ch);
+      try {
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        const b64 = dataUrl.split(",")[1];
+        if (b64) resolve({ base64: b64, mimeType: "image/jpeg" });
+        else reject(new Error("画像の変換に失敗しました"));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("画像の読み込みに失敗しました"));
+    };
+    img.src = url;
+  });
+}
+
 const TARGET_LEVEL_OPTIONS: { value: TargetLevel; label: string }[] = [
   { value: "grade_1", label: "小学1年" },
   { value: "grade_2", label: "小学2年" },
@@ -80,6 +118,7 @@ export default function Home() {
   const [extraRulesFromSavedRule, setExtraRulesFromSavedRule] = useState(false);
   /** 選択中の保存ルールID（セレクトにルール名を表示するため） */
   const [selectedSavedRuleId, setSelectedSavedRuleId] = useState<string>("");
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const router = useRouter();
 
   /**
@@ -264,14 +303,7 @@ export default function Home() {
   /** 設定画面表示時にテーマ履歴・保存済みルールを取得 */
   useEffect(() => {
     if (phase !== "config") return;
-    getThemeHistory().then((hist) => {
-      const seen = new Set<string>();
-      setThemeHistory(hist.filter((t) => {
-        if (seen.has(t)) return false;
-        seen.add(t);
-        return true;
-      }));
-    }).catch(() => {});
+    getThemeHistory().then(setThemeHistory).catch(() => {});
     getSavedRules().then(setSavedRules).catch(() => {});
   }, [phase]);
 
@@ -520,8 +552,7 @@ export default function Home() {
       speechRecognitionRef.current = null;
     }
     setError(null);
-    const RecClass = window.SpeechRecognition ?? (window as unknown as { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
-    const rec = new RecClass() as SpeechRecognition;
+    const rec = new SpeechRecognitionAPI() as SpeechRecognition;
     rec.lang = "ja-JP";
     rec.continuous = false;
     rec.interimResults = false;
@@ -559,44 +590,6 @@ export default function Home() {
   };
 
   /** 手書き作文画像を添削 */
-  /** 画像をリサイズ・圧縮して base64 を返す（送信サイズ削減で Server Action 制限を回避） */
-  const compressImageToBase64 = (file: File, maxSize = 1200, quality = 0.85): Promise<{ base64: string; mimeType: string }> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-        const scale = maxSize / Math.max(w, h);
-        const cw = scale >= 1 ? w : Math.round(w * scale);
-        const ch = scale >= 1 ? h : Math.round(h * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = cw;
-        canvas.height = ch;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Canvas に描画できません"));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, cw, ch);
-        try {
-          const dataUrl = canvas.toDataURL("image/jpeg", quality);
-          const b64 = dataUrl.split(",")[1];
-          if (b64) resolve({ base64: b64, mimeType: "image/jpeg" });
-          else reject(new Error("画像の変換に失敗しました"));
-        } catch (e) {
-          reject(e);
-        }
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error("画像の読み込みに失敗しました"));
-      };
-      img.src = url;
-    });
-  };
-
   const handleReviewImage = async () => {
     if (!imageFile) {
       setError("画像を選択してください。");
@@ -660,15 +653,17 @@ export default function Home() {
           </div>
           <button
             type="button"
+            disabled={logoutLoading}
             onClick={async () => {
+              setLogoutLoading(true);
               const supabase = createClient();
               await supabase.auth.signOut();
               router.push("/login");
               router.refresh();
             }}
-            className="shrink-0 rounded-sm border border-card-border bg-card px-3 py-1.5 text-sm text-foreground transition hover:bg-muted"
+            className="shrink-0 rounded-sm border border-card-border bg-card px-3 py-1.5 text-sm text-foreground transition hover:bg-muted disabled:opacity-50"
           >
-            ログアウト
+            {logoutLoading ? "…" : "ログアウト"}
           </button>
         </header>
 
@@ -705,7 +700,6 @@ export default function Home() {
                     setConfig((c) => ({ ...c, theme: e.target.value }))
                   }
                   onFocus={() => setShowThemeDropdown(true)}
-                  onBlur={() => {}}
                   autoComplete="off"
                   placeholder="例：夏休みの思い出"
                   className="w-full rounded-sm border border-card-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
@@ -905,7 +899,7 @@ export default function Home() {
                     i === messages.length - 1;
                   return (
                     <div
-                      key={i}
+                      key={`${msg.role}-${i}`}
                       className={`flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}
                     >
                       <div

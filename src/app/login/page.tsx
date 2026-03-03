@@ -9,7 +9,6 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -77,18 +76,6 @@ export default function LoginPage() {
                 className="w-full rounded-sm border border-card-border bg-background px-3 py-2 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
                 autoComplete="current-password"
               />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                id="remember"
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="rounded border-card-border"
-              />
-              <label htmlFor="remember" className="text-sm">
-                ログイン情報を記録する
-              </label>
             </div>
             <div className="flex justify-end pt-2">
               <button

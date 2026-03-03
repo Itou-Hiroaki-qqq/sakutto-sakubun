@@ -13,9 +13,13 @@ const getApiKey = () => {
 const getModelName = () =>
   process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 
-/** 新 SDK のクライアント（API キーはサーバー側でのみ使用） */
-function getClient() {
-  return new GoogleGenAI({ apiKey: getApiKey() });
+/** シングルトンクライアント（API キーはサーバー側でのみ使用） */
+let _client: GoogleGenAI | null = null;
+function getClient(): GoogleGenAI {
+  if (!_client) {
+    _client = new GoogleGenAI({ apiKey: getApiKey() });
+  }
+  return _client;
 }
 
 /** 対象レベルを日本語ラベルに変換（プロンプト用） */
